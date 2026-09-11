@@ -53,7 +53,3 @@ change bundled libraries require human review. To accept one:
 
 Keep the upstream project URL/identity (`openttd.org`). Packaging contact and
 personal project URLs use `mineiro.io`.
-
-RPM lint uses one narrowly scoped dictionary exception: OpenTTD calls its saved
-game format a "savegame" (`docs/savegame_format.md`). `rpmlint.toml` suppresses
-only that term in the docs package description.

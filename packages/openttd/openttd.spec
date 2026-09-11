@@ -2,7 +2,7 @@
 
 Name:           openttd
 Version:        16.0~beta2
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Transport system simulation game
 
 # Includes modified Squirrel, fmt, JSON, ICU scriptrun, MD5, OpenGL headers,
@@ -67,7 +67,7 @@ Requires:       %{name} = %{version}-%{release}
 
 %description docs
 Technical documentation for OpenTTD, including scripting, networking,
-base sets and savegame formats.
+base sets and saved game formats.
 
 %prep
 %autosetup -p1 -n openttd-%{upstream_version}
@@ -104,7 +104,9 @@ install -Dpm 0644 %{SOURCE1} %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.met
 
 %check
 %ctest --output-on-failure
-%{__cmake_builddir}/openttd --version | grep -F '%{upstream_version}'
+# OpenTTD supports -h, not --version; check its exit status before matching.
+%{__cmake_builddir}/openttd -h > openttd-help.txt
+grep -Fx 'OpenTTD %{upstream_version}' openttd-help.txt
 desktop-file-validate %{buildroot}%{_datadir}/applications/openttd.desktop
 appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.metainfo.xml
 
@@ -125,6 +127,9 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %doc docs
 
 %changelog
+* Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-5
+- Check the supported help option and clarify the docs description
+
 * Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-4
 - Preserve Fedora fortification flags instead of upstream level 2 override
 

@@ -9,7 +9,7 @@ check: check-specs
 	python3 -m unittest discover -s tests -v
 check-specs:
 	rpmspec -P packages/openttd/openttd.spec >/dev/null
-	rpmlint -c rpmlint.toml packages/openttd/openttd.spec
+	rpmlint packages/openttd/openttd.spec
 check-sources:
 	python3 scripts/releases.py fetch
 update:

@@ -1,3 +1,0 @@
-# OpenTTD uses "savegame" as a technical term (docs/savegame_format.md).
-# Suppress only this dictionary false positive, not general spelling errors.
-Filters = ["^openttd-docs\\.noarch: E: spelling-error \\('savegame',"]

@@ -32,7 +32,7 @@ jobs:
       - name: Build and test in clean Fedora 44
         run: |
           mock -r fedora-44-x86_64 --isolation=simple --rebuild dist/srpm/openttd-*.src.rpm --resultdir "$PWD/dist/mock/fedora-44-x86_64"
-          rpmlint -c rpmlint.toml dist/mock/fedora-44-x86_64/openttd-*.rpm
+          rpmlint dist/mock/fedora-44-x86_64/openttd-*.rpm
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
