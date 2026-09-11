@@ -55,7 +55,8 @@ def request(url):
 
 def fetch_yaml(url):
     with request(url) as response:
-        return yaml.safe_load(response.read(2 * 1024 * 1024))
+        # Keep version scalars textual: YAML floats would turn 16.10 into 16.1.
+        return yaml.load(response.read(2 * 1024 * 1024), Loader=yaml.BaseLoader)
 
 
 def release_metadata(version, manifest):
@@ -69,11 +70,14 @@ def release_metadata(version, manifest):
     source = matches[0]
     if not re.fullmatch(r'[a-f0-9]{64}', source['sha256sum']):
         raise ValueError('Invalid source SHA256')
-    if not isinstance(source['size'], int) or not 0 < source['size'] < 256 * 1024 * 1024:
+    if not re.fullmatch(r'[1-9][0-9]*', str(source['size'])):
+        raise ValueError('Invalid source size')
+    size = int(source['size'])
+    if size >= 256 * 1024 * 1024:
         raise ValueError('Unexpected source size')
     return {'upstream_version': version, 'rpm_version': rpm_version(version),
             'source': f'{CDN}/openttd-releases/{version}/{filename}',
-            'sha256': source['sha256sum'], 'size': source['size']}
+            'sha256': source['sha256sum'], 'size': size}
 
 
 def read_lock():

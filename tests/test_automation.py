@@ -1,4 +1,5 @@
 import importlib.util
+from io import BytesIO
 import json
 from pathlib import Path
 import sys
@@ -32,6 +33,11 @@ class ReleasesTest(unittest.TestCase):
         for value in ['../16.0', '16.0\n', '$(echo evil)', '16.0-alpha1', '16.0-beta0']:
             with self.assertRaises(ValueError):
                 releases.rpm_version(value)
+
+    def test_yaml_preserves_trailing_zero_versions(self):
+        with patch.object(releases, 'request', return_value=BytesIO(b'version: 16.10\nsize: 100\n')):
+            data = releases.fetch_yaml('unused')
+        self.assertEqual(data['version'], '16.10')
 
     def test_missing_release_is_failure(self):
         with self.assertRaises(ValueError):
