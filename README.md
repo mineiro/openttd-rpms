@@ -43,6 +43,9 @@ make srpm
 make mock CHROOT=fedora-44-x86_64
 ```
 
+The optional `openttd-docs` subpackage preserves upgrades from Fedora installations
+that include technical documentation.
+
 Your user must be allowed to run mock. SRPMs go to `dist/srpm/`, and mock RPMs
 and logs to `dist/mock/<chroot>/`. The build runs upstream unit tests and checks
 the executable version, desktop file and AppStream metadata.
