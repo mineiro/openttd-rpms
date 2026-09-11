@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.openttd.OpenTTD</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-only</project_license>
+  <name>OpenTTD</name>
+  <summary>Build and manage a transport company</summary>
+  <developer id="org.openttd"><name>OpenTTD developers</name></developer>
+  <description>
+    <p>OpenTTD is a transport simulation game. Connect towns and industries
+    with trains, trucks, buses, aircraft and ships, then grow your business
+    in single-player or multiplayer games.</p>
+  </description>
+  <launchable type="desktop-id">openttd.desktop</launchable>
+  <url type="homepage">https://www.openttd.org/</url>
+  <url type="bugtracker">https://github.com/OpenTTD/OpenTTD/issues</url>
+  <provides><binary>openttd</binary></provides>
+  <content_rating type="oars-1.1"/>
+</component>
