@@ -24,7 +24,7 @@ OpenSFX's `docs/readme.ptxt` says the sound set is CC-BY-SA-3.0 and the remainin
 
 OpenMSX is GPL-2.0-only, explicitly stated in `docs/readme.ptxt` and the source headers; the changelog records its switch to GPL v2 only. Keep generated `docs/license.txt`, `docs/readme.txt`, `src/themes.list` and `docs/redfarn_music_grant.txt`, which records permission for Jim Redfarn's tracks. README credits include the note that “Careless Love” is traditional/public domain and that “Moo Moo Boogie” was inspired by “Cow Cow Boogie”; retain these upstream notices without asserting independent composition provenance. Source: the OpenMSX source archive cited above.
 
-Catcodec is GPL-2.0-only, stated in its source headers. Preserve `COPYING` with `%license` and ship upstream readme/changelog. Source: the Catcodec source archive cited above.
+Catcodec is GPL-2.0-only, stated in its source headers. Preserve `COPYING` with `%license` and ship the upstream readme. This source archive has no changelog file; the dated readme is kept as supplied. Source: the Catcodec source archive cited above.
 
 ## Checks to retain in packaging
 
