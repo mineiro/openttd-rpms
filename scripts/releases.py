@@ -2,6 +2,7 @@
 """Select official releases, verify pinned sources, and build offline-ready SRPMs."""
 import argparse
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from functools import cmp_to_key
 import hashlib
 import json
@@ -17,9 +18,45 @@ import rpm
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE = ROOT / 'packages/openttd'
-SPEC = PACKAGE / 'openttd.spec'
-LOCK = PACKAGE / 'release.json'
+@dataclass(frozen=True)
+class Package:
+    name: str
+    upstream: str
+    channels: tuple = ('stable',)
+    unpack_suffix: str = ''
+    license_files: tuple = ()
+    extra_sources: tuple = ()
+
+    @property
+    def directory(self):
+        return ROOT / 'packages' / self.name
+
+    @property
+    def spec(self):
+        return self.directory / f'{self.name}.spec'
+
+    @property
+    def lock(self):
+        return self.directory / 'release.json'
+
+    @property
+    def review_file(self):
+        return self.directory / ('bundled-sources.json' if self.name == 'openttd' else 'licenses.json')
+
+
+PACKAGES = {
+    'catcodec': Package('catcodec', 'catcodec', license_files=('COPYING', 'docs/readme.txt'),
+                        extra_sources=('scripts/check-catcodec.py', 'LICENSE')),
+    'openttd-opensfx': Package('openttd-opensfx', 'opensfx', unpack_suffix='-source',
+        license_files=('docs/license.txt', 'docs/readme.ptxt', 'docs/digifish_music_grant.txt', 'src/opensfx.psfo'),
+        extra_sources=('scripts/check-baseset.py', 'LICENSE')),
+    'openttd-openmsx': Package('openttd-openmsx', 'openmsx', unpack_suffix='-source',
+        license_files=('docs/license.ptxt', 'docs/readme.ptxt', 'docs/redfarn_music_grant.txt', 'src/themes.list'),
+        extra_sources=('scripts/check-baseset.py', 'LICENSE')),
+    'openttd': Package('openttd', 'openttd', channels=('stable', 'testing'),
+        extra_sources=('packages/openttd/org.openttd.OpenTTD.metainfo.xml', 'packages/openttd/openttd-fonts.LICENSE')),
+}
+DEFAULT = PACKAGES['openttd']
 CDN = 'https://cdn.openttd.org'
 VERSION = re.compile(r'([0-9]+(?:\.[0-9]+){1,2})(?:-(beta|RC)([1-9][0-9]*))?\Z')
 
@@ -36,10 +73,10 @@ def compare(a, b):
     return rpm.labelCompare(('0', rpm_version(a), '0'), ('0', rpm_version(b), '0'))
 
 
-def latest_version(index):
+def latest_version(index, package=DEFAULT):
     versions = [str(item['version']) for item in index['latest']
-                if item.get('folder') == 'openttd-releases'
-                and item.get('name') in ('stable', 'testing')]
+                if item.get('folder') == f'{package.upstream}-releases'
+                and item.get('name') in package.channels]
     if not versions:
         raise ValueError('No official stable/testing releases in index')
     # Validate all candidates, including ones that would sort behind the winner.
@@ -59,11 +96,11 @@ def fetch_yaml(url):
         return yaml.load(response.read(2 * 1024 * 1024), Loader=yaml.BaseLoader)
 
 
-def release_metadata(version, manifest):
+def release_metadata(version, manifest, package=DEFAULT):
     rpm_version(version)
-    if str(manifest['version']) != version or manifest['category'] != 'openttd':
+    if str(manifest['version']) != version or manifest['category'] != package.upstream:
         raise ValueError('Release manifest identity mismatch')
-    filename = f'openttd-{version}-source.tar.xz'
+    filename = f'{package.upstream}-{version}-source.tar.xz'
     matches = [f for f in manifest['dev_files'] if f['id'] == filename]
     if len(matches) != 1:
         raise ValueError('Expected exactly one source tarball in release manifest')
@@ -76,17 +113,18 @@ def release_metadata(version, manifest):
     if size >= 256 * 1024 * 1024:
         raise ValueError('Unexpected source size')
     return {'upstream_version': version, 'rpm_version': rpm_version(version),
-            'source': f'{CDN}/openttd-releases/{version}/{filename}',
+            'source': f'{CDN}/{package.upstream}-releases/{version}/{filename}',
             'sha256': source['sha256sum'], 'size': size}
 
 
-def read_lock():
-    lock = json.loads(LOCK.read_text())
-    expected_url = f"{CDN}/openttd-releases/{lock['upstream_version']}/openttd-{lock['upstream_version']}-source.tar.xz"
+def read_lock(package=DEFAULT):
+    lock = json.loads(package.lock.read_text())
+    expected_url = f"{CDN}/{package.upstream}-releases/{lock['upstream_version']}/{package.upstream}-{lock['upstream_version']}-source.tar.xz"
     if lock['source'] != expected_url or lock['rpm_version'] != rpm_version(lock['upstream_version']):
         raise ValueError('Invalid release lock identity')
-    spec = SPEC.read_text()
-    for pattern, expected in [(r'^%global upstream_version (\S+)$', lock['upstream_version']),
+    spec = package.spec.read_text()
+    for pattern, expected in [(r'^Name:\s+(\S+)$', package.name),
+                              (r'^%global upstream_version (\S+)$', lock['upstream_version']),
                               (r'^Version:\s+(\S+)$', lock['rpm_version'])]:
         if re.search(pattern, spec, re.M).group(1) != expected:
             raise ValueError('Spec and release lock disagree')
@@ -100,8 +138,8 @@ def verify_file(path, lock):
         raise ValueError(f'Checksum/size mismatch: {path}; refusing to replace the recorded checksum')
 
 
-def fetch_source(lock):
-    directory = PACKAGE / 'sources'
+def fetch_source(lock, package=DEFAULT):
+    directory = package.directory / 'sources'
     directory.mkdir(exist_ok=True)
     path = directory / lock['source'].rsplit('/', 1)[1]
     if path.exists():
@@ -145,44 +183,52 @@ def bundle_inventory(source, version):
     return inventory
 
 
-def verify_bundles(source, version):
-    expected = json.loads((PACKAGE / 'bundled-sources.json').read_text())
-    actual = bundle_inventory(source, version)
+def license_inventory(source, version, package):
+    prefix = f'{package.upstream}-{version}{package.unpack_suffix}/'
+    with tarfile.open(source) as archive:
+        return {name: hashlib.sha256(archive.extractfile(prefix + name).read()).hexdigest()
+                for name in package.license_files}
+
+
+def verify_bundles(source, version, package=DEFAULT):
+    expected = json.loads(package.review_file.read_text())
+    actual = (bundle_inventory(source, version) if package.name == 'openttd'
+              else license_inventory(source, version, package))
     changed = sorted(k for k in expected.keys() | actual.keys() if expected.get(k) != actual.get(k))
     if changed:
         raise ValueError('Bundled source/license changes require review of License and Provides; '
                          'see docs/packaging-policy.md: ' + ', '.join(changed[:12]))
 
 
-def update():
-    old = read_lock()
-    version = latest_version(fetch_yaml(f'{CDN}/latest.yaml'))
+def update(package=DEFAULT):
+    old = read_lock(package)
+    version = latest_version(fetch_yaml(f'{CDN}/latest.yaml'), package)
     if compare(version, old['upstream_version']) < 0:
         raise ValueError('Upstream index went backwards; refusing a downgrade')
-    new = release_metadata(version, fetch_yaml(f'{CDN}/openttd-releases/{version}/manifest.yaml'))
+    new = release_metadata(version, fetch_yaml(f'{CDN}/{package.upstream}-releases/{version}/manifest.yaml'), package)
     if compare(version, old['upstream_version']) == 0:
         if old != new:
             raise ValueError('Published release metadata changed; manual investigation required')
-        print(f'Already tracking {version}')
+        print(f'{package.name}: already tracking {version}')
         return
-    source = fetch_source(new)
-    verify_bundles(source, version)
-    spec = SPEC.read_text()
+    source = fetch_source(new, package)
+    verify_bundles(source, version, package)
+    spec = package.spec.read_text()
     spec = re.sub(r'^%global upstream_version .+$', f'%global upstream_version {version}', spec, flags=re.M)
     spec = re.sub(r'^Version:.*$', f"Version:        {new['rpm_version']}", spec, flags=re.M)
     spec = re.sub(r'^Release:.*$', 'Release:        1%{?dist}', spec, flags=re.M)
     date = datetime.now(timezone.utc).strftime('%a %b %d %Y')
     entry = f"* {date} OpenTTD RPM automation <rpms@mineiro.io> - {new['rpm_version']}-1\n- Package upstream release {version}\n\n"
     spec = spec.replace('%changelog\n', '%changelog\n' + entry)
-    SPEC.write_text(spec)
-    LOCK.write_text(json.dumps(new, indent=2) + '\n')
-    print(f'Updated to {version}')
+    package.spec.write_text(spec)
+    package.lock.write_text(json.dumps(new, indent=2) + '\n')
+    print(f'{package.name}: updated to {version}')
 
 
-def srpm(outdir):
-    lock = read_lock()
-    source = fetch_source(lock)
-    verify_bundles(source, lock['upstream_version'])
+def srpm(outdir, package=DEFAULT):
+    lock = read_lock(package)
+    source = fetch_source(lock, package)
+    verify_bundles(source, lock['upstream_version'], package)
     outdir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='openttd-srpm-') as work:
         top = Path(work)
@@ -190,27 +236,37 @@ def srpm(outdir):
         sources.mkdir()
         shutil.copy2(source, sources)
         (sources / source.name).chmod(0o644)
-        shutil.copy2(PACKAGE / 'org.openttd.OpenTTD.metainfo.xml', sources)
-        shutil.copy2(PACKAGE / 'openttd-fonts.LICENSE', sources)
-        for patch in sorted((PACKAGE / 'patches').glob('*.patch')):
+        for relative in package.extra_sources:
+            shutil.copy2(ROOT / relative, sources)
+        for patch in sorted((package.directory / 'patches').glob('*.patch')):
             shutil.copy2(patch, sources)
         subprocess.run(['rpmbuild', '-bs', '--define', f'_topdir {top}', '--define',
-                        f'_srcrpmdir {outdir.resolve()}', '--define', 'dist %{nil}', str(SPEC)], check=True)
+                        f'_srcrpmdir {outdir.resolve()}', '--define', 'dist %{nil}', str(package.spec)], check=True)
+
+
+def srpm_path(outdir, package=DEFAULT):
+    nvr = subprocess.check_output(['rpmspec', '-q', '--srpm', '--define', 'dist %{nil}',
+        '--qf', '%{NAME}-%{VERSION}-%{RELEASE}', str(package.spec)], text=True).strip()
+    return outdir.resolve() / f'{nvr}.src.rpm'
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['update', 'fetch', 'srpm'])
+    parser.add_argument('command', choices=['update', 'fetch', 'srpm', 'srpm-path'])
     parser.add_argument('--outdir', type=Path, default=ROOT / 'dist/srpm')
+    parser.add_argument('--package', choices=PACKAGES, default='openttd')
     args = parser.parse_args()
+    package = PACKAGES[args.package]
     if args.command == 'update':
-        update()
+        update(package)
     elif args.command == 'srpm':
-        srpm(args.outdir)
+        srpm(args.outdir, package)
+    elif args.command == 'srpm-path':
+        print(srpm_path(args.outdir, package))
     else:
-        lock = read_lock()
-        source = fetch_source(lock)
-        verify_bundles(source, lock['upstream_version'])
+        lock = read_lock(package)
+        source = fetch_source(lock, package)
+        verify_bundles(source, lock['upstream_version'], package)
         print(f'Verified {source.name}')
 
 

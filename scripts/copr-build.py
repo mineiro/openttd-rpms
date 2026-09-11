@@ -51,8 +51,9 @@ def main():
     owner, project = args.project.split('/')
     name, version = subprocess.check_output(
         ['rpm', '-qp', '--qf', '%{NAME} %{VERSION}-%{RELEASE}', str(args.srpm)], text=True).split()
-    if name != 'openttd':
-        raise ValueError('Expected an openttd source RPM')
+    from releases import PACKAGES
+    if name not in PACKAGES:
+        raise ValueError(f'Unmanaged source package: {name}')
     client = Client.create_from_config_file()
     wanted = set(client.project_proxy.get(owner, project).chroot_repos)
     if not wanted:
@@ -64,7 +65,7 @@ def main():
     for build in builds:
         if (build.get('source_package') or {}).get('version') == version:
             candidates.append((build, list(client.build_chroot_proxy.get_list(build.id))))
-        elif not build.get('source_package') and build.state in ACTIVE:
+        elif not (build.get('source_package') or {}).get('version') and build.state in ACTIVE:
             # An import has no NVR yet. Wait for it rather than uploading duplicates.
             wait(client, build.id, deadline)
             raise RuntimeError('An import completed; rerun to reconcile its package version')

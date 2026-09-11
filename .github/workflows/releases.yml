@@ -3,6 +3,17 @@ on:
   schedule:
     - cron: '23 * * * *'
   workflow_dispatch:
+    inputs:
+      package:
+        description: Package to check and publish
+        type: choice
+        default: all
+        options:
+          - all
+          - catcodec
+          - openttd-opensfx
+          - openttd-openmsx
+          - openttd
 permissions:
   contents: read
 concurrency:
@@ -11,11 +22,20 @@ concurrency:
 jobs:
   release:
     if: github.repository == 'mineiro/openttd-rpms' && github.ref == 'refs/heads/main'
+    name: Release ${{ matrix.package }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     container: fedora:44
+    strategy:
+      fail-fast: false
+      # Each job checks out current main; serialize commits and dependency builds.
+      max-parallel: 1
+      matrix:
+        package: ${{ fromJSON(inputs.package != '' && inputs.package != 'all' && format('["{0}"]', inputs.package) || '["catcodec","openttd-opensfx","openttd-openmsx","openttd"]') }}
     permissions:
       contents: write
+    env:
+      PACKAGE: ${{ matrix.package }}
     steps:
       - name: Install packaging tools
         run: dnf -y install --setopt=install_weak_deps=0 git make python3-pyyaml python3-rpm python3-copr rpm-build rpmlint
@@ -25,9 +45,9 @@ jobs:
       - name: Discover and verify official release
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          make update
+          make update PACKAGE="$PACKAGE"
           make check
-          make srpm
+          make srpm PACKAGE="$PACKAGE"
           git diff --check
       - name: Keep the schedule active during quiet release periods
         run: |
@@ -43,9 +63,9 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add packages/openttd/openttd.spec packages/openttd/release.json .github/upstream-check.txt
+          git add "packages/$PACKAGE/$PACKAGE.spec" "packages/$PACKAGE/release.json" .github/upstream-check.txt
           if ! git diff --cached --quiet; then
-            git commit -m "Record verified OpenTTD release check: $(python3 -c 'import json; print(json.load(open("packages/openttd/release.json"))["upstream_version"])')"
+            git commit -m "Record verified release check for $PACKAGE"
             git push origin HEAD:main
           fi
       - name: Build missing COPR targets and wait for results
@@ -58,12 +78,13 @@ jobs:
           mkdir -p "$HOME/.config"
           printf '%s\n' "$COPR_CONFIG" > "$HOME/.config/copr"
           trap 'rm -f "$HOME/.config/copr"' EXIT
-          python3 scripts/copr-build.py dist/srpm/openttd-*.src.rpm
+          srpm=$(python3 scripts/releases.py srpm-path --package "$PACKAGE")
+          python3 scripts/copr-build.py "$srpm"
       - name: Preserve source RPM
         if: failure() || steps.copr.outputs.submitted == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: source-rpm
+          name: ${{ matrix.package }}-source-rpm
           path: dist/srpm/*.src.rpm
           if-no-files-found: ignore
           retention-days: 14
@@ -72,5 +93,5 @@ jobs:
         env:
           RESULT: ${{ job.status }}
         run: |
-          printf 'OpenTTD release automation: **%s**\n\n' "$RESULT" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s release automation: **%s**\n\n' "$PACKAGE" "$RESULT" >> "$GITHUB_STEP_SUMMARY"
           printf '[COPR builds](https://copr.fedorainfracloud.org/coprs/mineiro/openttd/builds/)\n' >> "$GITHUB_STEP_SUMMARY"

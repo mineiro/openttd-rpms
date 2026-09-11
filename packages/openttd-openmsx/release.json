@@ -1,0 +1,7 @@
+{
+  "upstream_version": "0.4.2",
+  "rpm_version": "0.4.2",
+  "source": "https://cdn.openttd.org/openmsx-releases/0.4.2/openmsx-0.4.2-source.tar.xz",
+  "sha256": "0f5196f9045c9123ed9207930a73871811654e46e7de2d079be8f8ee501ba840",
+  "size": 114760
+}

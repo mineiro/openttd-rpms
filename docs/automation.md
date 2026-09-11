@@ -8,15 +8,21 @@ has no new releases. Manual `workflow_dispatch` is also available. This is
 polling, not an upstream webhook. Investigate failing runs promptly; prolonged
 failures also prevent these successful-check commits.
 
-The release workflow:
+The release workflow runs a separate matrix job for each managed package:
+Catcodec, OpenSFX, OpenMSX and OpenTTD. Jobs run serially to avoid racing Git
+pushes; one package's failure does not cancel the other jobs. Each job checks
+out current main. The game tracks stable/testing releases and the data/tool
+packages track stable releases only.
 
-1. Reads `latest.yaml`, selects the highest official stable/testing version
+For each package, the workflow:
+
+1. Reads `latest.yaml`, selects the highest version in that package's configured channels
    using RPM ordering, then verifies its `manifest.yaml` identity and source
    SHA256/size. No nightly snapshots and no automatic downgrades.
-2. Stops if a published release's metadata changed or bundled sources need
+2. Stops if a published release's metadata changed or bundled sources or asset license/attribution files need
    review. Failures are visible in Actions logs and normal GitHub notifications.
 3. Runs updater tests and lint, generates a verified source RPM, commits only
-   the spec/release lock, and pushes the release record to main.
+   that package's spec/release lock (plus the periodic check marker), and pushes the release record to main.
 4. Reconciles that NVR against COPR on **every** run, even when the version did
    not change. Watches matching running builds, skips successful targets and
    submits only missing/failed targets with networking disabled.
@@ -52,7 +58,9 @@ restricted to main in this repository; fork schedules cannot publish here.
 To run the complete publisher manually:
 
 ```sh
-gh workflow run releases.yml --repo mineiro/openttd-rpms
+gh workflow run releases.yml --repo mineiro/openttd-rpms -f package=all
+# Or select just one package:
+gh workflow run releases.yml --repo mineiro/openttd-rpms -f package=openttd-opensfx
 ```
 
 To rehearse locally without publishing:
@@ -66,10 +74,24 @@ make mock CHROOT=fedora-44-x86_64
 To publish a verified SRPM using local COPR credentials:
 
 ```sh
-python3 scripts/copr-build.py dist/srpm/openttd-*.src.rpm
+python3 scripts/copr-build.py "$(python3 scripts/releases.py srpm-path --package openttd-opensfx)"
 ```
 
 Optional COPR SCM setup uses `https://github.com/mineiro/openttd-rpms.git`,
-committish `main`, subdirectory `packages/openttd`, spec `openttd.spec`, and
+committish `main`, subdirectory `packages/<name>`, spec `<name>.spec`, and
 `make_srpm`. The scheduled publisher uploads the verified SRPM directly; it
 needs no SCM webhook and does not race a second automatic build trigger.
+
+
+## Bootstrapping audio packages
+
+Publish Catcodec successfully before the first OpenSFX build: Fedora does not
+supply that build dependency. COPR includes the project's own repository when
+resolving build dependencies. OpenMSX has no dependency on Catcodec. After the
+initial bootstrap, the scheduled jobs reconcile each package independently.
+
+A data-only release does not rebuild or bump the game RPM. An unchanged game
+NVR is skipped once all its targets have succeeded. Existing OpenTTD RPMs already
+recommend these exact audio package names, so fresh installations gain audio
+without another game rebuild. Existing users can explicitly install the two
+new data packages and select them in Game Options.

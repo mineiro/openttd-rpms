@@ -75,13 +75,15 @@ class ReleasesTest(unittest.TestCase):
         old = releases.read_lock()
         new = dict(old, upstream_version='17.0-RC1', rpm_version='17.0~rc1')
         with tempfile.TemporaryDirectory() as directory:
-            lock = Path(directory) / 'release.json'
-            spec = Path(directory) / 'openttd.spec'
+            package_dir = Path(directory) / 'packages/openttd'
+            package_dir.mkdir(parents=True)
+            lock = package_dir / 'release.json'
+            spec = package_dir / 'openttd.spec'
             lock.write_text(json.dumps(old))
-            spec.write_text(releases.SPEC.read_text().replace('Release:        1', 'Release:        4'))
-            with patch.object(releases, 'LOCK', lock), patch.object(releases, 'SPEC', spec), patch.object(releases, 'fetch_yaml'), patch.object(releases, 'latest_version', return_value='17.0-RC1'), patch.object(releases, 'release_metadata', return_value=new), patch.object(releases, 'fetch_source') as fetch, patch.object(releases, 'verify_bundles') as verify:
+            spec.write_text(releases.DEFAULT.spec.read_text().replace('Release:        1', 'Release:        4'))
+            with patch.object(releases, 'ROOT', Path(directory)), patch.object(releases, 'fetch_yaml'), patch.object(releases, 'latest_version', return_value='17.0-RC1'), patch.object(releases, 'release_metadata', return_value=new), patch.object(releases, 'fetch_source') as fetch, patch.object(releases, 'verify_bundles') as verify:
                 releases.update()
-                fetch.assert_called_once_with(new)
+                fetch.assert_called_once_with(new, releases.DEFAULT)
                 verify.assert_called_once()
                 self.assertEqual(json.loads(lock.read_text()), new)
                 self.assertIn('Version:        17.0~rc1', spec.read_text())
@@ -90,11 +92,11 @@ class ReleasesTest(unittest.TestCase):
 
     def test_bundle_failure_does_not_mutate_package(self):
         old = releases.read_lock()
-        original = releases.SPEC.read_text()
+        original = releases.DEFAULT.spec.read_text()
         with patch.object(releases, 'fetch_yaml'), patch.object(releases, 'latest_version', return_value='17.0'), patch.object(releases, 'release_metadata', return_value=dict(old, upstream_version='17.0')), patch.object(releases, 'fetch_source'), patch.object(releases, 'verify_bundles', side_effect=ValueError('review required')):
             with self.assertRaisesRegex(ValueError, 'review required'):
                 releases.update()
-        self.assertEqual(releases.SPEC.read_text(), original)
+        self.assertEqual(releases.DEFAULT.spec.read_text(), original)
         self.assertEqual(releases.read_lock(), old)
 
     def test_bundle_change_requires_review(self):

@@ -19,7 +19,7 @@ stable or testing version, never a nightly or branch snapshot.
   happens before building the SRPM.
 - Run the upstream CTest suite, version smoke test, desktop-file validation and
   AppStream validation in `%check`. Clean mock builds are the packaging gate.
-- Use Fedora's OpenGFX/OpenSFX/OpenMSX packages as recommendations. The game can
+- Use Fedora's OpenGFX and this COPR's OpenSFX/OpenMSX packages as recommendations. The game can
   also use its in-game content downloader or the user's own licensed base data.
 
 ## Source integrity and bundled libraries
@@ -57,3 +57,27 @@ change bundled libraries require human review. To accept one:
 
 Keep the upstream project URL/identity (`openttd.org`). Packaging contact and
 personal project URLs use `mineiro.io`.
+
+## Sound and music assets
+
+The `openttd-opensfx` and `openttd-openmsx` RPMs use the official source archives.
+Catcodec is a separate build-time tool package; it is not a runtime dependency.
+OpenSFX's catalogue is encoded from WAV samples, then decoded during checks and
+compared sample-by-sample to the sources (including the two intentional empty
+slots in version 1.0.3). OpenMSX's descriptor is regenerated using Python 3.
+Checks validate the descriptors, all file hashes, and the MIDI headers.
+
+Each new package has a `release.json` and a `licenses.json` review baseline.
+Changes to upstream licensing or attribution files require review before an
+update can be recorded or built. Preserve upstream notices and grants. For
+OpenSFX's non-sample files, select the GPL alternative of the upstream dual
+license; retain all individual Creative Commons sample licenses.
+
+`rpmlint.toml` permits only the historic FSF postal address in the original GPL
+license notices of these three upstream packages. Their license text is kept
+verbatim. Other lint findings are not suppressed.
+
+The installed-engine CI test starts with an isolated user-data location, installs
+OpenTTD by name with DNF recommendations enabled, and requires usable OpenSFX and
+OpenMSX sets. This catches unavailable recommended packages and wrong install
+paths, which the game's unit tests alone do not cover.
