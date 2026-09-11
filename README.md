@@ -31,7 +31,7 @@ To return to Fedora's package:
 
 ```sh
 sudo dnf copr disable mineiro/openttd
-sudo dnf distro-sync openttd
+sudo dnf distro-sync 'openttd*'
 ```
 
 ## Build locally

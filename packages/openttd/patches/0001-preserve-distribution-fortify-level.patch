@@ -1,0 +1,14 @@
+Keep Fedora compiler flags authoritative. Upstream adds FORTIFY=2 after
+the distribution flags, overriding Fedora FORTIFY=3. Drop this patch when
+upstream respects externally configured fortification.
+
+--- a/cmake/CompileFlags.cmake
++++ b/cmake/CompileFlags.cmake
+@@ -28,7 +28,6 @@
+     # it does not appear to support the $<> tags.
+     add_compile_options(
+         "$<$<CONFIG:Debug>:-D_DEBUG>"
+-        "$<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=2>" # FORTIFY_SOURCE should only be used in non-debug builds (requires -O1+)
+     )
+     if(MINGW)
+         add_link_options(

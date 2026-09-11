@@ -2,7 +2,7 @@
 
 Name:           openttd
 Version:        16.0~beta2
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Transport system simulation game
 
 # Includes modified Squirrel, fmt, JSON, ICU scriptrun, MD5, OpenGL headers,
@@ -11,10 +11,13 @@ License:        GPL-2.0-only AND MIT AND Zlib AND Unicode-DFS-2016 AND BSD-2-Cla
 URL:            https://www.openttd.org/
 Source0:        https://cdn.openttd.org/openttd-releases/%{upstream_version}/openttd-%{upstream_version}-source.tar.xz
 Source1:        org.openttd.OpenTTD.metainfo.xml
+# Preserve the distribution hardening level instead of overriding it with 2.
+Patch0:         0001-preserve-distribution-fortify-level.patch
 
 BuildRequires:  cmake
 BuildRequires:  gcc-c++
 BuildRequires:  ninja-build
+BuildRequires:  patch
 BuildRequires:  desktop-file-utils
 BuildRequires:  appstream
 BuildRequires:  grfcodec
@@ -67,7 +70,7 @@ Technical documentation for OpenTTD, including scripting, networking,
 base sets and savegame formats.
 
 %prep
-%autosetup -n openttd-%{upstream_version}
+%autosetup -p1 -n openttd-%{upstream_version}
 mkdir bundled-licenses
 cp src/3rdparty/squirrel/COPYRIGHT bundled-licenses/squirrel.txt
 cp src/3rdparty/fmt/LICENSE.rst bundled-licenses/fmt.txt
@@ -122,6 +125,9 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %doc docs
 
 %changelog
+* Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-4
+- Preserve Fedora fortification flags instead of upstream level 2 override
+
 * Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-3
 - Preserve the docs subpackage so existing Fedora installations can upgrade
 
