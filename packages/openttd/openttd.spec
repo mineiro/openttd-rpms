@@ -2,7 +2,7 @@
 
 Name:           openttd
 Version:        16.0~beta2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Transport system simulation game
 
 # Includes modified Squirrel, fmt, JSON, ICU scriptrun, MD5, OpenGL headers,
@@ -65,8 +65,8 @@ cp src/3rdparty/nlohmann/LICENSE.MIT bundled-licenses/nlohmann-json.txt
 cp src/3rdparty/icu/LICENSE bundled-licenses/icu-scriptrun.txt
 cp src/3rdparty/monocypher/LICENCE.md bundled-licenses/monocypher.txt
 cp src/3rdparty/openttd_social_integration_api/LICENSE bundled-licenses/social-api.txt
-cp src/3rdparty/opengl/khrplatform.h bundled-licenses/opengl-khrplatform.h
-cp src/3rdparty/md5/md5.cpp bundled-licenses/md5.cpp
+cp src/3rdparty/opengl/khrplatform.h bundled-licenses/opengl-khrplatform.txt
+cp src/3rdparty/md5/md5.cpp bundled-licenses/md5.txt
 
 %build
 %cmake -G Ninja \
@@ -106,5 +106,8 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %{_datadir}/pixmaps/openttd.*.xpm
 
 %changelog
+* Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-2
+- Normalize archived source permissions and license notice filenames
+
 * Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-1
 - Package upstream testing release with tests and verified release sources

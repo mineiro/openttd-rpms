@@ -185,6 +185,7 @@ def srpm(outdir):
         sources = top / 'SOURCES'
         sources.mkdir()
         shutil.copy2(source, sources)
+        (sources / source.name).chmod(0o644)
         shutil.copy2(PACKAGE / 'org.openttd.OpenTTD.metainfo.xml', sources)
         subprocess.run(['rpmbuild', '-bs', '--define', f'_topdir {top}', '--define',
                         f'_srcrpmdir {outdir.resolve()}', '--define', 'dist %{nil}', str(SPEC)], check=True)
