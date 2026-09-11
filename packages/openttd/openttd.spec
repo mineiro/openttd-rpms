@@ -2,15 +2,17 @@
 
 Name:           openttd
 Version:        16.0~beta2
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Transport system simulation game
 
 # Includes modified Squirrel, fmt, JSON, ICU scriptrun, MD5, OpenGL headers,
-# and Monocypher (BSD option selected). Catch2 is used only by the test binary.
-License:        GPL-2.0-only AND MIT AND Zlib AND Unicode-DFS-2016 AND BSD-2-Clause
+# and Monocypher (BSD option selected), OFL fonts and CC0 AppStream metadata.
+# Catch2 is used only by the test binary.
+License:        GPL-2.0-only AND MIT AND Zlib AND Unicode-DFS-2016 AND BSD-2-Clause AND OFL-1.1 AND CC0-1.0
 URL:            https://www.openttd.org/
 Source0:        https://cdn.openttd.org/openttd-releases/%{upstream_version}/openttd-%{upstream_version}-source.tar.xz
 Source1:        org.openttd.OpenTTD.metainfo.xml
+Source2:        openttd-fonts.LICENSE
 # Preserve the distribution hardening level instead of overriding it with 2.
 Patch0:         0001-preserve-distribution-fortify-level.patch
 
@@ -72,6 +74,7 @@ base sets and saved game formats.
 %prep
 %autosetup -p1 -n openttd-%{upstream_version}
 mkdir bundled-licenses
+cp -p "%{SOURCE2}" openttd-fonts.LICENSE
 cp src/3rdparty/squirrel/COPYRIGHT bundled-licenses/squirrel.txt
 cp src/3rdparty/fmt/LICENSE.rst bundled-licenses/fmt.txt
 cp src/3rdparty/nlohmann/LICENSE.MIT bundled-licenses/nlohmann-json.txt
@@ -95,6 +98,9 @@ cp src/3rdparty/md5/md5.cpp bundled-licenses/md5.txt
 
 %install
 %cmake_install
+# Upstream installs its GameScript regression fixtures as if they were games.
+rm -rf %{buildroot}%{_datadir}/%{name}/game/gs \
+       %{buildroot}%{_datadir}/%{name}/game/gs_compat
 # Technical documentation belongs in the Fedora-compatible docs subpackage.
 rm -rf %{buildroot}%{_docdir}/%{name}/docs
 # RPM installs the license separately from documentation.
@@ -111,7 +117,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/openttd.desktop
 appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.metainfo.xml
 
 %files
-%license COPYING.md bundled-licenses
+%license COPYING.md bundled-licenses openttd-fonts.LICENSE media/baseset/OpenTTD-font.md
 %doc %{_docdir}/%{name}
 %{_bindir}/openttd
 %{_datadir}/openttd/
@@ -127,6 +133,10 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %doc docs
 
 %changelog
+* Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-6
+- Exclude regression game scripts from installed data
+- Preserve the bundled font license notices and review font changes
+
 * Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-5
 - Check the supported help option and clarify the docs description
 

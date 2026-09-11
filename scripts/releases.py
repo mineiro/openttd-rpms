@@ -129,12 +129,16 @@ def fetch_source(lock):
 
 def bundle_inventory(source, version):
     """Review gate for changed vendored dependencies, including license changes."""
-    prefix = f'openttd-{version}/src/3rdparty/'
+    prefix = f'openttd-{version}/'
     inventory = {}
     with tarfile.open(source) as archive:
         for member in archive:
-            if member.isfile() and member.name.startswith(prefix):
-                relative = member.name[len(prefix):]
+            if not member.isfile() or not member.name.startswith(prefix):
+                continue
+            relative = member.name[len(prefix):]
+            is_code = relative.startswith('src/3rdparty/')
+            is_font = relative.startswith('media/baseset/') and (relative.endswith('.ttf') or relative.endswith('OpenTTD-font.md'))
+            if is_code or is_font:
                 inventory[relative] = hashlib.sha256(archive.extractfile(member).read()).hexdigest()
     if not inventory:
         raise ValueError('Missing bundled dependency inventory')
@@ -187,6 +191,7 @@ def srpm(outdir):
         shutil.copy2(source, sources)
         (sources / source.name).chmod(0o644)
         shutil.copy2(PACKAGE / 'org.openttd.OpenTTD.metainfo.xml', sources)
+        shutil.copy2(PACKAGE / 'openttd-fonts.LICENSE', sources)
         for patch in sorted((PACKAGE / 'patches').glob('*.patch')):
             shutil.copy2(patch, sources)
         subprocess.run(['rpmbuild', '-bs', '--define', f'_topdir {top}', '--define',

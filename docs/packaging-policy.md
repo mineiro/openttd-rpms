@@ -36,10 +36,14 @@ COPR package, following Fedora's existing approach. This is not a claim that the
 package has completed an official Fedora review. `Provides: bundled(...)`
 records linked libraries and versions. The ICU scriptrun code is separate from
 the system ICU libraries. Select the BSD-2-Clause option for Monocypher.
+Font-specific metadata declares OFL-1.1; the package preserves those embedded
+notices alongside the GPL provenance notice. See the research notes for the
+upstream licensing discrepancy. Font changes also require review.
 Catch2 is only in the non-installed test executable; build-tool licenses do not
 belong in the runtime binary's `License` expression.
 
-`bundled-sources.json` pins all files in `src/3rdparty/`. Any change stops the
+`bundled-sources.json` pins all files in `src/3rdparty/`, the bundled fonts,
+and their provenance notice. Any change stops the
 updater before it changes the spec. This intentionally makes releases that
 change bundled libraries require human review. To accept one:
 
