@@ -29,13 +29,23 @@ jobs:
           make check
           make srpm
           git diff --check
+      - name: Keep the schedule active during quiet release periods
+        run: |
+          python3 - <<'PYTHON'
+          from datetime import datetime, timezone, date
+          from pathlib import Path
+          marker = Path('.github/upstream-check.txt')
+          today = datetime.now(timezone.utc).date()
+          if not marker.exists() or (today - date.fromisoformat(marker.read_text().strip())).days >= 30:
+              marker.write_text(today.isoformat() + '\n')
+          PYTHON
       - name: Record verified version
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add packages/openttd/openttd.spec packages/openttd/release.json
+          git add packages/openttd/openttd.spec packages/openttd/release.json .github/upstream-check.txt
           if ! git diff --cached --quiet; then
-            git commit -m "Update OpenTTD to $(python3 -c 'import json; print(json.load(open("packages/openttd/release.json"))["upstream_version"])')"
+            git commit -m "Record verified OpenTTD release check: $(python3 -c 'import json; print(json.load(open("packages/openttd/release.json"))["upstream_version"])')"
             git push origin HEAD:main
           fi
       - name: Build missing COPR targets and wait for results

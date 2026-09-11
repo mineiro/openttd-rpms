@@ -1,9 +1,12 @@
 # Release automation
 
 GitHub Actions checks the official OpenTTD CDN every hour at minute 23 (UTC).
-GitHub scheduling can be delayed and inactive public repositories may have
-scheduled workflows disabled after 60 days. Check Actions periodically; manual
-`workflow_dispatch` is also available. It is polling, not an upstream webhook.
+GitHub scheduling can be delayed. A successful poll records a dated check in
+`.github/upstream-check.txt` at least every 30 days, keeping repository activity
+within GitHub's 60-day public-repository inactivity window even when upstream
+has no new releases. Manual `workflow_dispatch` is also available. This is
+polling, not an upstream webhook. Investigate failing runs promptly; prolonged
+failures also prevent these successful-check commits.
 
 The release workflow:
 
