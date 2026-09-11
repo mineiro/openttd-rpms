@@ -33,7 +33,7 @@ jobs:
         run: |
           mock -r fedora-44-x86_64 --isolation=simple --rebuild dist/srpm/openttd-*.src.rpm --resultdir "$PWD/dist/mock/fedora-44-x86_64"
           rpmlint dist/mock/fedora-44-x86_64/openttd-*.rpm
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: fedora-44-build
