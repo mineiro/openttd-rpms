@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 PACKAGE ?= openttd
-PACKAGES := catcodec openttd-opensfx openttd-openmsx openttd
+PACKAGES := catcodec openttd-opensfx openttd-openmsx python-blend-modes openttd-opengfx2-classic openttd
 OUTDIR ?= $(CURDIR)/dist/srpm
 CHROOT ?= fedora-44-x86_64
 .PHONY: list check check-specs check-sources update update-all srpm srpm-all mock

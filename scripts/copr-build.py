@@ -44,14 +44,23 @@ def wait(client, build_id, deadline):
 def main():
     from copr.v3 import Client
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('srpm', type=Path)
+    from releases import PACKAGES
+    parser.add_argument('srpm', type=Path, nargs='?')
+    parser.add_argument('--package', choices=PACKAGES, help='Build an SRPM only if COPR needs it')
     parser.add_argument('--project', default='mineiro/openttd')
     parser.add_argument('--timeout', type=int, default=6600)
     args = parser.parse_args()
     owner, project = args.project.split('/')
-    name, version = subprocess.check_output(
-        ['rpm', '-qp', '--qf', '%{NAME} %{VERSION}-%{RELEASE}', str(args.srpm)], text=True).split()
-    from releases import PACKAGES
+    if bool(args.srpm) == bool(args.package):
+        parser.error('Specify one SRPM or --package')
+    if args.package:
+        package = PACKAGES[args.package]
+        from releases import read_lock
+        read_lock(package)
+        command = ['rpmspec', '-q', '--srpm', '--define', 'dist %{nil}', '--qf', '%{NAME} %{VERSION}-%{RELEASE}', str(package.spec)]
+    else:
+        command = ['rpm', '-qp', '--qf', '%{NAME} %{VERSION}-%{RELEASE}', str(args.srpm)]
+    name, version = subprocess.check_output(command, text=True).split()
     if name not in PACKAGES:
         raise ValueError(f'Unmanaged source package: {name}')
     client = Client.create_from_config_file()
@@ -80,6 +89,10 @@ def main():
     if not missing:
         print(f'{name}-{version} already succeeded on all {len(wanted)} enabled chroots')
         return
+    if args.package:
+        from releases import ROOT, srpm, srpm_path
+        srpm(ROOT / 'dist/srpm', package)
+        args.srpm = srpm_path(ROOT / 'dist/srpm', package)
     build = client.build_proxy.create_from_file(owner, project, str(args.srpm),
                                                 buildopts={'chroots': sorted(missing), 'enable_net': False})
     if output := os.environ.get('GITHUB_OUTPUT'):

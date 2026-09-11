@@ -81,3 +81,23 @@ The installed-engine CI test starts with an isolated user-data location, install
 OpenTTD by name with DNF recommendations enabled, and requires usable OpenSFX and
 OpenMSX sets. This catches unavailable recommended packages and wrong install
 paths, which the game's unit tests alone do not cover.
+
+## OpenGFX2 Classic
+
+Keep the Classic graphics RPM separate from Fedora's original OpenGFX, with no
+Obsoletes/Conflicts and no edits to user configuration. Install only the Classic
+OBG descriptor and its six GRFs. The validation tool uses GRF-format MD5 values,
+not a whole-file MD5 (NewGRF v2 has a distinct data-section hash).
+
+Include the full editable Git LFS artwork and pinned font SFD sources in the
+source RPM. The graphics license and credits, font-specific OFL notice and font
+repository provenance notices are installed as licenses. Blend Modes is packaged
+separately as a build dependency. Offline font inputs, Linux process semantics
+and deterministic texture-noise generation are documented in the packaging patch.
+
+The installed-engine check explicitly installs Classic and verifies discovery
+alongside original OpenGFX. Users opt into the new graphics in Game Options.
+
+The original GPL texts for the graphics and font repositories retain their
+historic FSF address. The same narrow license-notice lint exception applies;
+other graphics-package errors are not filtered.

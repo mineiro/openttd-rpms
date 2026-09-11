@@ -1,0 +1,104 @@
+Use pinned local font sources, bounded Linux process workers with Python 3.14,
+deterministic per-sheet texture noise, and paired GRF/MD5 make targets. Remove individual hunks when upstream
+provides equivalent offline/reproducible build controls.
+
+--- a/makefile
++++ b/makefile
+@@ -136,13 +136,12 @@
+ 
+ .PRECIOUS: graphics_%.tmp
+ graphics_%.tmp: graphics/fonts/openttd-ttf FORCE
+-	cd graphics/fonts/openttd-ttf && git pull
+ 	$(eval ZOOM=$(word 2, $(subst _, ,$(basename $(notdir $@)))))
+ 	python3 graphics/generate_graphics.py $(ZOOM)
+ 
+ # Get font git dependencies
+ graphics/fonts/openttd-ttf:
+-	cd graphics/fonts && git clone https://github.com/OpenTTD/OpenTTD-TTF openttd-ttf
++	@test -d $@ || { echo "Pinned font sources must be supplied before building"; exit 1; }
+ 
+ # Clean
+ .PHONY: clean
+--- a/graphics/custom_dither.py
++++ b/graphics/custom_dither.py
+@@ -296,7 +296,7 @@
+   Dither a 32bpp image, outputting 8bpp images.
+   Uses multiprocessing to parallelize the dithering process of sprites within the spritesheet.
+   """
+-  import concurrent, multiprocessing
++  import concurrent.futures, multiprocessing
+   from tqdm.auto import tqdm
+   sprites = find_sprites(image)
+   #setup worklist by cropping sprites from input image
+@@ -309,7 +309,7 @@
+       worklist.append([image.crop((sprites[i][0], sprites[i][1], sprites[i][2], sprites[i][3])), None, sprites[i][0], sprites[i][1]])
+   #setup workers based on multiprocess mode
+   multiprocess_mode = "process" # process seems to give easily the highest performance
+-  workers = multiprocessing.cpu_count()
++  workers = min(int(os.environ.get("OPENGFX2_WORKERS", multiprocessing.cpu_count())), 8)
+   if multiprocess_mode is None:
+     Executor = concurrent.futures.ThreadPoolExecutor
+     workers = 1
+@@ -318,7 +318,7 @@
+   elif multiprocess_mode == "thread":
+     Executor = concurrent.futures.ThreadPoolExecutor
+   #process
+-  with Executor(workers) as executor:
++  with Executor(workers, **({"mp_context": multiprocessing.get_context("fork")} if multiprocess_mode == "process" else {})) as executor:
+     futures = [executor.submit(make_output_parallel_handler, input=input) for input in worklist]
+     results = [future.result() for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), smoothing=0)]
+   #recombine cropped sprites into spritesheets
+--- a/graphics/towns/shapeproc.py
++++ b/graphics/towns/shapeproc.py
+@@ -34,7 +34,7 @@
+ 
+ from PIL import Image
+ from PIL import ImageFilter
+-from random import randint
++from random import randint, seed
+ import numpy, blend_modes # For overlay blending
+ import glob, os, sys
+ 
+@@ -209,7 +209,8 @@
+   index_woodwork = [200,202,203]
+   index_ironwork = [178,179,180]
+   index_windows = [130,132,133]
+-  for input_file in glob.glob(os.path.join(base_path, "*"+suffix)):
++  for input_file in sorted(glob.glob(os.path.join(base_path, "*"+suffix))):
++    seed(0) # Deterministic texture noise for each source sheet.
+     if (input_file.endswith("_base_shape.png")):
+       continue
+     input_name = os.path.basename(input_file)
+--- a/graphics/towns/baseshapeproc.py
++++ b/graphics/towns/baseshapeproc.py
+@@ -35,7 +35,7 @@
+ 
+ from PIL import Image
+ from PIL import ImageFilter
+-from random import randint
++from random import randint, seed
+ import numpy, blend_modes # For overlay blending
+ import glob, os, sys
+ 
+@@ -216,7 +216,8 @@
+   index_walls = [41, 42, 43]
+   index_greenery = [90, 91, 92]
+   index_woodwork = [115, 116, 117]
+-  for input_file in glob.glob(os.path.join(base_path, "*"+suffix)):
++  for input_file in sorted(glob.glob(os.path.join(base_path, "*"+suffix))):
++    seed(0) # Deterministic texture noise for each source sheet.
+     input_name = os.path.basename(input_file)
+     print(" %s in scale %d mode" % (input_name, scale))
+     # check for input file changes
+
+--- a/makefile
++++ b/makefile
+@@ -89,7 +89,7 @@
+ # FORCE, as nml_preprocessor includes arbitrary pnml files
+ .PRECIOUS: baseset/%.grf baseset/%.md5 baseset/%.nml
+ 
+-baseset/%_8.grf: graphics_1 baseset/lang/*.lng FORCE
++baseset/%_8.grf baseset/%_8.md5 &: graphics_1 baseset/lang/*.lng FORCE
+ 	$(eval PREF=$(word 1, $(subst _, ,$(basename $(notdir $@)))))
+ 	$(eval NAME=$(word 2, $(subst _, ,$(basename $(notdir $@)))))
+ 	$(eval ZOOM=$(word 3, $(subst _, ,$(basename $(notdir $@)))))

@@ -1,0 +1,21 @@
+{
+  "upstream_version": "0.8.1",
+  "rpm_version": "0.8.1",
+  "source": "https://api.github.com/repos/OpenTTD/OpenGFX2/tarball/013cbc9e700c796af001a381a2d93592d49146ac",
+  "filename": "opengfx2-git-013cbc9e700c796af001a381a2d93592d49146ac.tar.gz",
+  "sha256": "61b04441966bcfd34301e097973f3dc9c8c4b5932627cd57768f3ce2de84536b",
+  "size": 2314698,
+  "commit": "013cbc9e700c796af001a381a2d93592d49146ac",
+  "commit_date": "2025-12-15T21:00:34Z",
+  "fonts": {
+    "source": "https://api.github.com/repos/OpenTTD/OpenTTD-TTF/tarball/0fc6324b32ce49b1eb3f37bf8ad36b598f044e79",
+    "filename": "openttd-ttf-0fc6324b32ce49b1eb3f37bf8ad36b598f044e79.tar.gz",
+    "sha256": "1ed32778a4ce295767f3ef8954dd9a638acc243f1fd7d42b31d11ec5498e3556",
+    "size": 2663725
+  },
+  "reference_binary": {
+    "source": "https://cdn.openttd.org/opengfx2_classic-releases/0.8.1/opengfx2_classic-0.8.1-all.zip",
+    "sha256": "37c29e419593e583bf718c50c2c95311a1dfc5398c18d95c1bbe6f3b91d6b4c0",
+    "size": 10856877
+  }
+}

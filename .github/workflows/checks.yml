@@ -12,7 +12,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     container:
       image: fedora:44
       options: --privileged
@@ -23,6 +23,13 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Cache verified graphics source bundle
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            packages/openttd-opengfx2-classic/sources/*.tar.gz
+            packages/openttd-opengfx2-classic/sources/*.tar.xz
+          key: opengfx2-sources-${{ hashFiles('packages/openttd-opengfx2-classic/release.json', 'scripts/source_providers.py') }}
       - name: Check metadata and updater regressions
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -45,9 +52,9 @@ jobs:
           set -euo pipefail
           repo="file://$PWD/dist/chain/results/fedora-44-x86_64"
           mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --addrepo "$repo" --init
-          mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --addrepo "$repo" --dnf-cmd install -y --setopt=install_weak_deps=True python3 openttd
+          mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --addrepo "$repo" --dnf-cmd install -y --setopt=install_weak_deps=True python3 openttd openttd-opengfx2-classic
           mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --copyin "$PWD/scripts/check-installed-assets.py" /tmp/
-          mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --chroot 'python3 /tmp/check-installed-assets.py'
+          mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --chroot 'python3 /tmp/check-installed-assets.py --graphics'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -57,3 +64,4 @@ jobs:
             dist/chain/**/*.log
             dist/chain/**/*.rpm
           retention-days: 14
+          compression-level: 0

@@ -1,6 +1,7 @@
 # Preserve upstream GPL notices verbatim, including their historical FSF address.
 # This is a postal-address warning, not a missing or invalid license.
 Filters = [
+  '^openttd-opengfx2-classic\.[^:]+: E: incorrect-fsf-address /usr/share/licenses/openttd-opengfx2-classic/(LICENSE|font-repository-LICENSE)$',
   '^catcodec\.[^:]+: E: incorrect-fsf-address /usr/share/licenses/catcodec/COPYING$',
   '^openttd-opensfx\.[^:]+: E: incorrect-fsf-address /usr/share/licenses/openttd-opensfx/license.txt$',
   '^openttd-openmsx\.[^:]+: E: incorrect-fsf-address /usr/share/licenses/openttd-openmsx/license.txt$',

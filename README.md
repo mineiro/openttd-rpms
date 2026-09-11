@@ -39,10 +39,18 @@ Restart the game and choose **Game Options → Base sounds set → OpenSFX** if
 `NoSound` was previously saved. Choose **OpenMSX** as the base music set if
 needed. Package installation preserves your existing configuration.
 
-OpenGFX2 Classic is a distinct, newer graphics family, available through
-**Online Content**. It is not an update to Fedora's original OpenGFX package;
-upstream recommended it during the [OpenTTD 15 release candidates](https://www.openttd.org/news/2025/12/08/openttd-15-0-rc1).
-This repository currently packages audio assets, not OpenGFX2.
+OpenGFX2 Classic is a distinct, newer graphics family. Install it as an option
+alongside Fedora's original OpenGFX:
+
+```sh
+sudo dnf install --refresh openttd-opengfx2-classic
+```
+
+Select **Game Options → Graphics → Base graphics set → OpenGFX2 Classic**.
+Existing graphics choices are preserved. This package contains Classic, the
+complete 8-bit set, and excludes the separate High Def variant and gameplay
+NewGRFs. Upstream recommended OpenGFX2 during the
+[OpenTTD 15 release candidates](https://www.openttd.org/news/2025/12/08/openttd-15-0-rc1).
 
 To return to Fedora's package:
 
@@ -71,12 +79,15 @@ the executable version, desktop file and AppStream metadata.
 ## Packages
 
 - `openttd`: official testing and stable game releases.
+- `openttd-opengfx2-classic`: Classic graphics, rebuilt from pinned artwork and font sources.
+- `python3-blend-modes`: a build dependency for graphics generation (source package `python-blend-modes`).
 - `openttd-opensfx`: stable sound sets, encoded from WAV sources.
 - `openttd-openmsx`: stable MIDI music sets, with regenerated descriptors.
 - `catcodec`: the source-built encoder used to build OpenSFX; it is not required
   at runtime by the sound package.
 
-OpenSFX builds need Catcodec from this COPR or a local mock chain repository.
+OpenSFX builds need Catcodec; OpenGFX2 builds need python3-blend-modes. Both are
+available from this COPR or a local mock chain repository.
 The CI workflow builds the tool first, then the assets and game, and verifies
 that installing the game alone pulls in usable audio sets.
 
@@ -92,9 +103,16 @@ notices pause the affected package for review.
 - [Packaging policy](docs/packaging-policy.md)
 - [Upstream and Fedora research](docs/packaging-research.md)
 - [Sound/music source and license research](docs/sound-packaging-research.md)
+- [OpenGFX2 source and license research](docs/opengfx2-research.md)
 
 Repository: [mineiro/openttd-rpms](https://github.com/mineiro/openttd-rpms).
 Packaging maintained at [mineiro.io](https://mineiro.io).
 
 Packaging scripts are MIT-licensed. AppStream metadata is CC0-1.0. OpenTTD and
 its bundled components retain their upstream licenses, recorded in the spec.
+
+The first graphics source preparation downloads about 900 MB of upstream artwork,
+including editable originals, and creates a complete source RPM. The validated
+source bundle is cached for subsequent builds. The graphics build also generates
+its font inputs from SFD sources with FontForge. None of those build tools are
+runtime requirements of the graphics data package.

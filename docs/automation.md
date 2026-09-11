@@ -9,7 +9,7 @@ polling, not an upstream webhook. Investigate failing runs promptly; prolonged
 failures also prevent these successful-check commits.
 
 The release workflow runs a separate matrix job for each managed package:
-Catcodec, OpenSFX, OpenMSX and OpenTTD. Jobs run serially to avoid racing Git
+Catcodec, OpenSFX, OpenMSX, Blend Modes, OpenGFX2 Classic and OpenTTD. Jobs run serially to avoid racing Git
 pushes; one package's failure does not cancel the other jobs. Each job checks
 out current main. The game tracks stable/testing releases and the data/tool
 packages track stable releases only.
@@ -21,11 +21,12 @@ For each package, the workflow:
    SHA256/size. No nightly snapshots and no automatic downgrades.
 2. Stops if a published release's metadata changed or bundled sources or asset license/attribution files need
    review. Failures are visible in Actions logs and normal GitHub notifications.
-3. Runs updater tests and lint, generates a verified source RPM, commits only
+3. Runs updater tests and lint, commits only
    that package's spec/release lock (plus the periodic check marker), and pushes the release record to main.
 4. Reconciles that NVR against COPR on **every** run, even when the version did
    not change. Watches matching running builds, skips successful targets and
-   submits only missing/failed targets with networking disabled.
+   generates a verified source RPM only when targets need it, and submits only
+   missing/failed targets with networking disabled.
 5. Waits for COPR, where `%check` runs on each architecture, and retains the
    source RPM in Actions artifacts. Interrupted runs resume on the next poll.
 
@@ -95,3 +96,30 @@ NVR is skipped once all its targets have succeeded. Existing OpenTTD RPMs alread
 recommend these exact audio package names, so fresh installations gain audio
 without another game rebuild. Existing users can explicitly install the two
 new data packages and select them in Game Options.
+
+## Graphics source provider
+
+OpenGFX2 0.8.1 has no source archive in its CDN manifest. The updater follows
+that CDN's stable channel, resolves the same GitHub release tag to an immutable
+commit, and records the GitHub archive hash plus the official Classic binary
+reference hash. A changed tag/archive for an existing version is rejected.
+
+The source preparer materializes every Git LFS object from the pinned tree,
+validates its OID (SHA256) and size, and retains editable artwork. It exports a
+source bundle with deterministic metadata and an explicit provenance file.
+Cached bundles are checked file-by-file against the anchored input inventory;
+incomplete, altered, or extra files cause failure. A local file lock prevents
+simultaneous source preparations from corrupting a cached bundle.
+
+The separate OpenTTD-TTF source revision is pinned. Fonts are built from SFD
+masters in the offline RPM build, and their embedded license notices are shipped.
+Updating the font pin requires review and coordinated updates of the lock and
+spec; it is not an automatic pull of the font repository's main branch.
+
+GitHub Actions caches the validated graphics source archives. The publisher
+checks COPR before preparing any SRPM, so hourly no-op polls do not materialize
+or upload the large artwork source again. Blend Modes uses PyPI's stable source
+distribution metadata and SHA256, with its own license review baseline.
+
+Bootstrap python-blend-modes before the first graphics build. A normal all-package
+run processes it before OpenGFX2; neither is a runtime dependency of the game.

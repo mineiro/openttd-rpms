@@ -1,0 +1,7 @@
+{
+  "upstream_version": "2.2.0",
+  "rpm_version": "2.2.0",
+  "source": "https://files.pythonhosted.org/packages/source/b/blend_modes/blend_modes-2.2.0.tar.gz",
+  "sha256": "54e0703be83097a94af792e52a21fbbd3af20a690b21c9175283e216762c123a",
+  "size": 18404
+}

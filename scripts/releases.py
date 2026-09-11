@@ -26,6 +26,7 @@ class Package:
     unpack_suffix: str = ''
     license_files: tuple = ()
     extra_sources: tuple = ()
+    source_kind: str = 'cdn'
 
     @property
     def directory(self):
@@ -53,6 +54,12 @@ PACKAGES = {
     'openttd-openmsx': Package('openttd-openmsx', 'openmsx', unpack_suffix='-source',
         license_files=('docs/license.ptxt', 'docs/readme.ptxt', 'docs/redfarn_music_grant.txt', 'src/themes.list'),
         extra_sources=('scripts/check-baseset.py', 'LICENSE')),
+    'python-blend-modes': Package('python-blend-modes', 'blend_modes', source_kind='pypi',
+        license_files=('LICENSE.txt',), extra_sources=('scripts/check-blend-modes.py', 'LICENSE')),
+    'openttd-opengfx2-classic': Package('openttd-opengfx2-classic', 'opengfx2_classic',
+        source_kind='git-lfs', unpack_suffix='-source',
+        license_files=('LICENSE', 'README.md', 'credits.md', 'graphics/fonts/charactergrab.py', 'baseset/lang/english.lng'),
+        extra_sources=('scripts/build-opengfx2-fonts.py', 'scripts/check-graphics.py', 'LICENSE')),
     'openttd': Package('openttd', 'openttd', channels=('stable', 'testing'),
         extra_sources=('packages/openttd/org.openttd.OpenTTD.metainfo.xml', 'packages/openttd/openttd-fonts.LICENSE')),
 }
@@ -98,6 +105,12 @@ def fetch_yaml(url):
 
 def release_metadata(version, manifest, package=DEFAULT):
     rpm_version(version)
+    if package.source_kind == 'pypi':
+        from source_providers import pypi_metadata
+        return pypi_metadata(package.upstream, version)
+    if package.source_kind == 'git-lfs':
+        from source_providers import graphics_metadata
+        return graphics_metadata(version, manifest)
     if str(manifest['version']) != version or manifest['category'] != package.upstream:
         raise ValueError('Release manifest identity mismatch')
     filename = f'{package.upstream}-{version}-source.tar.xz'
@@ -120,6 +133,15 @@ def release_metadata(version, manifest, package=DEFAULT):
 def read_lock(package=DEFAULT):
     lock = json.loads(package.lock.read_text())
     expected_url = f"{CDN}/{package.upstream}-releases/{lock['upstream_version']}/{package.upstream}-{lock['upstream_version']}-source.tar.xz"
+    if package.source_kind == 'pypi':
+        expected_url = f"https://files.pythonhosted.org/packages/source/{package.upstream[0]}/{package.upstream}/{package.upstream}-{lock['upstream_version']}.tar.gz"
+    elif package.source_kind == 'git-lfs':
+        from source_providers import GFX_REPO, FONTS_REPO, FONTS_COMMIT
+        if not re.fullmatch(r'[a-f0-9]{40}', lock['commit']):
+            raise ValueError('Invalid graphics commit')
+        expected_url = f"https://api.github.com/repos/{GFX_REPO}/tarball/{lock['commit']}"
+        if lock['fonts']['source'] != f'https://api.github.com/repos/{FONTS_REPO}/tarball/{FONTS_COMMIT}':
+            raise ValueError('Unexpected font source')
     if lock['source'] != expected_url or lock['rpm_version'] != rpm_version(lock['upstream_version']):
         raise ValueError('Invalid release lock identity')
     spec = package.spec.read_text()
@@ -141,7 +163,10 @@ def verify_file(path, lock):
 def fetch_source(lock, package=DEFAULT):
     directory = package.directory / 'sources'
     directory.mkdir(exist_ok=True)
-    path = directory / lock['source'].rsplit('/', 1)[1]
+    filename = lock.get('filename', lock['source'].rsplit('/', 1)[1])
+    if Path(filename).name != filename:
+        raise ValueError('Invalid local source filename')
+    path = directory / filename
     if path.exists():
         verify_file(path, lock)
         return path
@@ -186,6 +211,9 @@ def bundle_inventory(source, version):
 def license_inventory(source, version, package):
     prefix = f'{package.upstream}-{version}{package.unpack_suffix}/'
     with tarfile.open(source) as archive:
+        if package.source_kind == 'git-lfs':
+            from source_providers import archive_root
+            prefix = archive_root(archive)
         return {name: hashlib.sha256(archive.extractfile(prefix + name).read()).hexdigest()
                 for name in package.license_files}
 
@@ -202,10 +230,17 @@ def verify_bundles(source, version, package=DEFAULT):
 
 def update(package=DEFAULT):
     old = read_lock(package)
-    version = latest_version(fetch_yaml(f'{CDN}/latest.yaml'), package)
+    if package.source_kind == 'pypi':
+        from source_providers import get_json
+        version = get_json(f'https://pypi.org/pypi/{package.upstream}/json')['info']['version']
+        rpm_version(version)
+    else:
+        version = latest_version(fetch_yaml(f'{CDN}/latest.yaml'), package)
     if compare(version, old['upstream_version']) < 0:
         raise ValueError('Upstream index went backwards; refusing a downgrade')
-    new = release_metadata(version, fetch_yaml(f'{CDN}/{package.upstream}-releases/{version}/manifest.yaml'), package)
+    manifest = (None if package.source_kind == 'pypi' else
+                fetch_yaml(f'{CDN}/{package.upstream}-releases/{version}/manifest.yaml'))
+    new = release_metadata(version, manifest, package)
     if compare(version, old['upstream_version']) == 0:
         if old != new:
             raise ValueError('Published release metadata changed; manual investigation required')
@@ -229,6 +264,11 @@ def srpm(outdir, package=DEFAULT):
     lock = read_lock(package)
     source = fetch_source(lock, package)
     verify_bundles(source, lock['upstream_version'], package)
+    extra = []
+    if package.source_kind == 'git-lfs':
+        from source_providers import prepare_graphics
+        extra.append(fetch_source(lock['fonts'], package))
+        source = prepare_graphics(source, lock, package.directory / 'sources', ROOT / '.cache/lfs-objects')
     outdir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='openttd-srpm-') as work:
         top = Path(work)
@@ -236,12 +276,19 @@ def srpm(outdir, package=DEFAULT):
         sources.mkdir()
         shutil.copy2(source, sources)
         (sources / source.name).chmod(0o644)
+        for path in extra:
+            shutil.copy2(path, sources)
+            (sources / path.name).chmod(0o644)
         for relative in package.extra_sources:
             shutil.copy2(ROOT / relative, sources)
         for patch in sorted((package.directory / 'patches').glob('*.patch')):
             shutil.copy2(patch, sources)
-        subprocess.run(['rpmbuild', '-bs', '--define', f'_topdir {top}', '--define',
-                        f'_srcrpmdir {outdir.resolve()}', '--define', 'dist %{nil}', str(package.spec)], check=True)
+        command = ['rpmbuild', '-bs', '--define', f'_topdir {top}', '--define',
+                   f'_srcrpmdir {outdir.resolve()}', '--define', 'dist %{nil}']
+        if package.source_kind == 'git-lfs':
+            # The complete artwork is already XZ-compressed; avoid expensive recompression.
+            command.extend(['--define', '_source_payload w1.zstdio'])
+        subprocess.run(command + [str(package.spec)], check=True)
 
 
 def srpm_path(outdir, package=DEFAULT):
