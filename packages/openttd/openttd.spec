@@ -1,8 +1,8 @@
-%global upstream_version 16.0-beta2
+%global upstream_version 16.0-beta3
 
 Name:           openttd
-Version:        16.0~beta2
-Release:        6%{?dist}
+Version:        16.0~beta3
+Release:        1%{?dist}
 Summary:        Transport system simulation game
 
 # Includes modified Squirrel, fmt, JSON, ICU scriptrun, MD5, OpenGL headers,
@@ -133,6 +133,9 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %doc docs
 
 %changelog
+* Sat Sep 19 2026 OpenTTD RPM automation <rpms@mineiro.io> - 16.0~beta3-1
+- Package upstream release 16.0-beta3
+
 * Fri Sep 11 2026 Jose Tiburcio Ribeiro Netto <jnetto@mineiro.io> - 16.0~beta2-6
 - Exclude regression game scripts from installed data
 - Preserve the bundled font license notices and review font changes
