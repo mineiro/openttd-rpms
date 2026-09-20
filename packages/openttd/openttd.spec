@@ -1,7 +1,7 @@
-%global upstream_version 16.0-beta3
+%global upstream_version 16.0-beta4
 
 Name:           openttd
-Version:        16.0~beta3
+Version:        16.0~beta4
 Release:        1%{?dist}
 Summary:        Transport system simulation game
 
@@ -133,6 +133,9 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.openttd.OpenTTD.m
 %doc docs
 
 %changelog
+* Sun Sep 20 2026 OpenTTD RPM automation <rpms@mineiro.io> - 16.0~beta4-1
+- Package upstream release 16.0-beta4
+
 * Sat Sep 19 2026 OpenTTD RPM automation <rpms@mineiro.io> - 16.0~beta3-1
 - Package upstream release 16.0-beta3
 

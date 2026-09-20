@@ -1,7 +1,7 @@
 {
-  "upstream_version": "16.0-beta3",
-  "rpm_version": "16.0~beta3",
-  "source": "https://cdn.openttd.org/openttd-releases/16.0-beta3/openttd-16.0-beta3-source.tar.xz",
-  "sha256": "75d45b7bd88721dc922d33dbcdb6e7005630837c3f215894f144f09a9efb3796",
-  "size": 8657256
+  "upstream_version": "16.0-beta4",
+  "rpm_version": "16.0~beta4",
+  "source": "https://cdn.openttd.org/openttd-releases/16.0-beta4/openttd-16.0-beta4-source.tar.xz",
+  "sha256": "6493fae15e748245457545d30252ec2f9caab1269951c3e8c2653a27c74c7831",
+  "size": 8658556
 }
