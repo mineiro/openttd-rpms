@@ -93,7 +93,7 @@ that installing the game alone pulls in usable audio sets.
 
 ## Updates
 
-An hourly GitHub Actions workflow discovers official releases, verifies source
+A daily GitHub Actions workflow discovers official releases, verifies source
 checksums, records package updates, and builds missing COPR targets. Failed
 builds are retried, even when the version has not changed. The game tracks testing and stable releases; the tool and assets track stable
 releases. Changes to bundled libraries, font files, or asset license/attribution

@@ -1,6 +1,6 @@
 # Release automation
 
-GitHub Actions checks the official OpenTTD CDN every hour at minute 23 (UTC).
+GitHub Actions checks the official OpenTTD CDN once a day at 06:23 UTC.
 GitHub scheduling can be delayed. A successful poll records a dated check in
 `.github/upstream-check.txt` at least every 30 days, keeping repository activity
 within GitHub's 60-day public-repository inactivity window even when upstream
@@ -117,7 +117,7 @@ Updating the font pin requires review and coordinated updates of the lock and
 spec; it is not an automatic pull of the font repository's main branch.
 
 GitHub Actions caches the validated graphics source archives. The publisher
-checks COPR before preparing any SRPM, so hourly no-op polls do not materialize
+checks COPR before preparing any SRPM, so daily no-op polls do not materialize
 or upload the large artwork source again. Blend Modes uses PyPI's stable source
 distribution metadata and SHA256, with its own license review baseline.
 
