@@ -8,6 +8,10 @@ has no new releases. Manual `workflow_dispatch` is also available. This is
 polling, not an upstream webhook. Investigate failing runs promptly; prolonged
 failures also prevent these successful-check commits.
 
+A failed run opens (or comments on) the `ci-releases` issue "Release automation
+is failing", listing the failed package jobs and their errors; the next
+successful run closes it. The issue is maintained by `scripts/ci-issue.sh`.
+
 The release workflow runs a separate matrix job for each managed package:
 Catcodec, OpenSFX, OpenMSX, Blend Modes, OpenGFX2 Classic and OpenTTD. Jobs run serially to avoid racing Git
 pushes; one package's failure does not cancel the other jobs. Each job checks

@@ -104,3 +104,26 @@ jobs:
         run: |
           printf '%s release automation: **%s**\n\n' "$PACKAGE" "$RESULT" >> "$GITHUB_STEP_SUMMARY"
           printf '[COPR builds](https://copr.fedorainfracloud.org/coprs/mineiro/openttd/builds/)\n' >> "$GITHUB_STEP_SUMMARY"
+
+  report:
+    needs: release
+    if: ${{ always() && github.repository == 'mineiro/openttd-rpms' && needs.release.result != 'cancelled' && needs.release.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      checks: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Open, update, or close the tracking issue
+        env:
+          RESULT: ${{ needs.release.result }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            ./scripts/ci-issue.sh alert ci-releases "Release automation is failing" passing
+          else
+            ./scripts/ci-issue.sh run-summary > "${RUNNER_TEMP}/body.md"
+            ./scripts/ci-issue.sh alert ci-releases "Release automation is failing" failing "${RUNNER_TEMP}/body.md"
+          fi
