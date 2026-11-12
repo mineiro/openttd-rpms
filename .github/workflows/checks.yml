@@ -55,7 +55,7 @@ jobs:
           mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --addrepo "$repo" --dnf-cmd install -y --setopt=install_weak_deps=True python3 openttd openttd-opengfx2-classic
           mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --copyin "$PWD/scripts/check-installed-assets.py" /tmp/
           mock -r fedora-44-x86_64 --uniqueext audio-install --isolation=simple --chroot 'python3 /tmp/check-installed-assets.py --graphics'
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: fedora-44-build
